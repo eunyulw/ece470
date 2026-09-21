@@ -23,14 +23,16 @@ home = np.radians([120, -90, 90, -90, -90, 0])
 Q11 = [124.41,  -58.06, 122.40, -154.32,    -90.06, 4.58]
 Q12 = [124.42,  -66.26, 121.00, -144.72,    -90.05, 4.56]
 Q13 = [124.42,  -72.60, 118.54, -135.92,    -90.04, 4.54]
+
 Q21 = [146.89,  -64.54, 138.08, -163.43,    -90.07, 27.05]
 Q22 = [146.90,  -75.26, 136.33, -150.97,    -90.05, 27.03]
 Q23 = [146.90,  -83.85, 133.16, -139.21,    -90.04, 27.01]
-Q31 = [173.59,  -62.79, 133.14, -160.16,    -90.01, 53.76]
-Q32 = [173.59,  -72.23, 131.57, -149.15,    -89.99, 53.74]
-Q33 = [173.60,  -80.35, 128.52, -137.98,    -89.98, 53.72]
 
-T1 = [124.43,   -86.38, 101.73, -105.34,    -90.01, 4.47] # -209.96
+Q31 = [173.59,  -60.49, 133.28, -162.60,    -90.01, 53.76]
+Q32 = [173.59,  -69.74, 132.16, -152.23,    -90.00, 53.75]
+Q33 = [173.60,  -78.08, 129.58, -141.32,    -89.99, 53.73]
+
+T1 = [124.43,   -86.38, 101.73, -105.34,    -90.01, 4.47]
 T2 = [146.91,   -99.80, 114.27, -104.38,    -90.01, 26.94]
 T3 = [173.61,   -95.40, 110.52, -104.93,    -89.95, 53.65]
 
@@ -203,28 +205,40 @@ class UR3e(Node):
         end_target = Q[end_tower][end_height]
 
         # Move to the start (initial position of the target block) and check if move was valid
-        if not self.move_arm(self, start_target):
+        if not self.move_arm(T[start_tower]):
+            return 0
+        
+        if not self.move_arm(start_target):
             return 0
 
         # Set the digital output 0 (suction gripper) to high
         self.set_io(0, 1.0)
 
         # Apply delay to assure suction gripper has the block attached
-        time.sleep(1.0)
+        # print(self.analog_in_0_value)
+        # time.sleep(0.5)
+        # print(self.analog_in_0_value)
+        # time.sleep(0.5)
+        # print(self.analog_in_0_value)
+        # time.sleep(0.5)
+        print(self.analog_in_0_value)
 
-        if self.analog_in_0_value > 2.0:
-            if not self.move_arm(self, T[start_tower]):
+        if self.analog_in_0_value > 1.5:
+            if not self.move_arm(T[start_tower]):
                 return 0
         else:
             return 0
 
-        if not self.move_arm(self, T[end_tower]):
+        if not self.move_arm(T[end_tower]):
             return 0
 
-        if not self.move_arm(self, end_target):
+        if not self.move_arm(end_target):
             return 0
 
         self.set_io(0, 0.0)
+
+        if not self.move_arm(T[end_tower]):
+            return 0
 
         return 1
 
@@ -246,8 +260,8 @@ def main(args=None):
     ############## Your Code Start Here ##############
     # TODO: modify the code below so that program can get user input
     loop_count = 0
-    start_location = 0
-    dest_location = 0
+    start = 0
+    dest = 0
     # Wait for initial state updates
     while node.current_joint_state is None:
         executor.spin_once(timeout_sec=0.05)
@@ -256,16 +270,16 @@ def main(args=None):
 
     try:
         # Get user input
-        start_location, dest_location = input("Enter the tower you will start at and want to move the blocks to: ").split(" ")
-        print("You want to move from " + start_location + " to " + dest_location + "\n")
+        start, dest = input("Enter the tower you will start at and want to move the blocks to: ").split(" ")
+        print("You want to move from " + start + " to " + dest + "\n")
 
-        start_location = int(start_location)
-        dest_location = int(dest_location)
+        start = int(start)
+        dest = int(dest)
 
-        if start_location > 2 or dest_location > 2 or start_location < 0 or dest_location < 0:
+        if start > 2 or dest > 2 or start < 0 or dest < 0:
             print("Enter values in the correct range")
             loop_count = 0
-        elif start_location == dest_location:
+        elif start == dest:
             print("Start Location and Destination must differ.")
             loop_count = 0
         else:
@@ -276,46 +290,59 @@ def main(args=None):
         # TODO: modify the code so that UR3e can move tower accordingly from user input
 
         while(loop_count > 0):
-            aux = 0
-            if start_location == 0:
-                if dest_location == 1:
-                    aux = 2
+            y = 0
+            if start == 0:
+                if dest == 1:
+                    y = 2
                 else:
-                    aux = 1
-            elif start_location == 1:
-                if dest_location == 0:
-                    aux = 2
+                    y = 1
+            elif start == 1:
+                if dest == 0:
+                    y = 2
                 else:
-                    aux = 0
+                    y = 0
             else:
-                if dest_location == 0:
-                    aux = 1
+                if dest == 0:
+                    y = 1
                 else:
-                    aux = 0
+                    y = 0
+
+            x = start
+            z = dest
 
             node.move_arm(home)
 
-            node.get_logger().info(f'Sending goal 1 ...')
-
-            if not node.move_arm(Q[0][0]):
-                node.get_logger().error("Failed to move to goal" + str(Q[0][0]))
+            if not node.move_block(x, 2, z, 0):
+                node.get_logger().error("Failed to move block from " + str(Q[x][2]) + " to " + str(Q[z][0]))
                 break
 
-            node.set_io(0, 1.0)  # Turn/ on suction
-            # Delay to make sure suction cup has grasped the block
-            time.sleep(1.0)
-
-            node.get_logger().info(f'Sending goal 2 ...')
-            if not node.move_arm(Q[1][1]):
-                node.get_logger().error("Failed to move to goal"+str(Q[1][1]))
+            if not node.move_block(x, 1, y, 0):
+                node.get_logger().error("Failed to move block from " + str(Q[x][2]) + " to " + str(Q[y][0]))
                 break
 
-            node.get_logger().info(f'Sending goal 3 ...')
-            if not node.move_arm(Q[2][2]):
-                node.get_logger().error("Failed to move to goal"+str(Q[2][2]))
+            if not node.move_block(z, 0, y, 1):
+                node.get_logger().error("Failed to move block from " + str(Q[z][0]) + " to " + str(Q[y][1]))
                 break
-            loop_count = loop_count - 1
-            node.set_io(0, 0.0)  # Turn off suction
+
+            if not node.move_block(x, 0, z, 0):
+                node.get_logger().error("Failed to move block from " + str(Q[x][0]) + " to " + str(Q[z][0]))
+                break
+
+            if not node.move_block(y, 1, x, 0):
+                node.get_logger().error("Failed to move block from " + str(Q[y][1]) + " to " + str(Q[x][0]))
+                break
+
+            if not node.move_block(y, 0, z, 1):
+                node.get_logger().error("Failed to move block from " + str(Q[y][0]) + " to " + str(Q[z][1]))
+                break
+
+            if not node.move_block(x, 0, z, 2):
+                node.get_logger().error("Failed to move block from " + str(Q[x][0]) + " to " + str(Q[z][2]))
+                break
+
+            node.move_arm(home)
+
+            loop_count -= 1
 
     except KeyboardInterrupt:
         pass
