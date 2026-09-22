@@ -17,7 +17,7 @@ class JointAngles:
         self.position = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
 # UR3e home position
-home = np.radians([120, -90, 90, -90, -90, 0])
+home = np.radians([150, -120, 120, -90, -90, 0])
 
 # Hanoi tower location 
 Q11 = [124.41,  -58.06, 122.40, -154.32,    -90.06, 4.58]
@@ -28,9 +28,9 @@ Q21 = [146.89,  -64.54, 138.08, -163.43,    -90.07, 27.05]
 Q22 = [146.90,  -75.26, 136.33, -150.97,    -90.05, 27.03]
 Q23 = [146.90,  -83.85, 133.16, -139.21,    -90.04, 27.01]
 
-Q31 = [173.59,  -60.49, 133.28, -162.60,    -90.01, 53.76]
-Q32 = [173.59,  -69.74, 132.16, -152.23,    -90.00, 53.75]
-Q33 = [173.60,  -78.08, 129.58, -141.32,    -89.99, 53.73]
+Q31 = [173.59,  -62.79, 133.14, -160.16,    -90.01, 53.76]
+Q32 = [173.59,  -72.23, 131.57, -149.15,    -89.99, 53.74]
+Q33 = [173.60,  -80.35, 128.52, -137.98,    -89.98, 53.72]
 
 T1 = [124.43,   -86.38, 101.73, -105.34,    -90.01, 4.47]
 T2 = [146.91,   -99.80, 114.27, -104.38,    -90.01, 26.94]
@@ -215,15 +215,9 @@ class UR3e(Node):
         self.set_io(0, 1.0)
 
         # Apply delay to assure suction gripper has the block attached
-        # print(self.analog_in_0_value)
-        # time.sleep(0.5)
-        # print(self.analog_in_0_value)
-        # time.sleep(0.5)
-        # print(self.analog_in_0_value)
-        # time.sleep(0.5)
-        print(self.analog_in_0_value)
+        self.wait(1.0)
 
-        if self.analog_in_0_value > 1.5:
+        if self.analog_in_0_value > 2.0:
             if not self.move_arm(T[start_tower]):
                 return 0
         else:
@@ -236,6 +230,7 @@ class UR3e(Node):
             return 0
 
         self.set_io(0, 0.0)
+        self.wait(0.5)
 
         if not self.move_arm(T[end_tower]):
             return 0
@@ -243,6 +238,11 @@ class UR3e(Node):
         return 1
 
         ############### Your Code End Here ###############
+
+    def wait(self, sec):
+        end = time.monotonic() + sec
+        while time.monotonic() < end:
+            rclpy.spin_once(self, timeout_sec=0.05)
 
 
 def main(args=None):
@@ -341,6 +341,8 @@ def main(args=None):
                 break
 
             node.move_arm(home)
+
+            node.get_logger().info("Successfully Moved Blocks from Tower " + str(x) + " to " + str(z))
 
             loop_count -= 1
 
