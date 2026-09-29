@@ -84,16 +84,22 @@ def lab_fk(theta1, theta2, theta3, theta4, theta5, theta6):
 	print("Foward kinematics calculated:\n")
 
 	# =================== Your code starts here ====================#
-	M, S = Get_MS()
 	theta = [theta1,theta2,theta3,theta4,theta5,theta6]
+	M, S = Get_MS()
+	T = np.eye(4)
 
-	T = M
-	for i in range(5, -1, -1):
-		twist = S[0:6, 0].T
-		Si = twistToMat(s_twist=twist)
+	for i in range(6):
+		omega = S[0:3, i]
+		v = S[3:6, i]
+		S_bracket = np.array([
+			[0.0, -omega[2], omega[1], v[0]],
+			[omega[2], 0.0, -omega[0], v[1]],
+			[-omega[1], omega[0], 0.0, v[2]],
+			[0.0, 0.0, 0.0, 0.0],
+		])
+		T = T @ expm(S_bracket * thetas[i])
 
-		T = expm(Si * theta[i]) @ T
-
+	T = T @ M
 	# ==============================================================#
 
 	print(str(T) + "\n")
@@ -106,20 +112,6 @@ def lab_fk(theta1, theta2, theta3, theta4, theta5, theta6):
 	return_value[5] = theta6
 
 	return return_value
-
-def twistToMat(s_twist):
-	w, v = s_twist[:3], s_twist[3:]
-	mat = np.zeros((4, 4), dtype=float)
-	mat[:3, :3] = skew(w=w)
-	mat[:3, 3] = v
-	return mat
-
-def skew(w):
-	return np.array([
-		[0, -w[2], w[1]],
-		[w[2], 0, -w[0]],
-		[-w[1], w[0], 0]
-	])
 
 
 """
